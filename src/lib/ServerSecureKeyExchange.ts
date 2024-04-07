@@ -93,7 +93,7 @@ export class ServerSecureKeyExchange {
    * Initiate the secret generation using the clients public key
    * @param clientPublicKey - Client Public key generated from the SecureKeyExchange client package
    * @param userID - Unique identifier for the user initating the key exchange
-   * @param ttl - Set the time for the generated secrets to expire and be invalid. Defaults to 5 minutes
+   * @param ttl - Set the time for the generated secrets in seconds to expire and be invalid. Defaults to 5 minutes
    */
   async generateSecret(
     clientPublicKey: string,

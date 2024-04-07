@@ -58,6 +58,10 @@ This method is used to set a redis connection `secure-keyx` will use to cache th
 
 This method is used to generate, encrypt and cache the shared secret. It does this using the clientPublicKey gotten from `ClientSecureKeyExchange`, 32 character encryption key passed in the class constructor and the redis connection provided using the `setRedisConnection()`.
 
+### `getSecret(options)`
+
+This method is used to retrieve the cached encrypted secrets stored in redis. You can specify whether to return the encrypted or decrypted version of the secret using `decrypt` option in `GetSecretOptions`.
+
 Example:
 
 ```javascript
@@ -73,8 +77,19 @@ app.post("/", async (req, res) => {
   );
   secureServerClient.setRedisConnection(client);
   const serverPublicKey = await secureServerClient.generateSecret(
-    req.query.clientPublicKey
+    req.query.clientPublicKey,
+    req.query.userID,
+    60 // expire the secret in 60 seconds
   );
-  res.json(serverPublicKey);
+  const encryptedSecret = await secureServerClient.getSecret({
+    userID: req.query.userID,
+    decrypt: false, // the shared secret will be encrypted when returned
+  });
+  const decryptedSecret = await secureServerClient.getSecret({
+    userID: req.query.userID,
+    decrypt: true, // the shared secret will be returned plainly
+  });
+
+  res.json({ serverPublicKey, decryptedSecret, encryptedSecret });
 });
 ```
