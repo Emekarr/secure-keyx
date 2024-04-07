@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { RedisClientType } from "redis";
 import { verifyTextLength } from "./utils/validator";
+import { GetSecretOptions } from "./types";
 
 export class ServerSecureKeyExchange {
   private redisClient?: RedisClientType<any>;
@@ -52,6 +53,28 @@ export class ServerSecureKeyExchange {
   }
 
   /**
+   * This is used to decrypt the cached encrypted secrets
+   * @param encryptedSecret - The cached secret encrypted by encryptSecret
+   */
+  private decryptSecret(encryptedSecret: string): string {
+    const encryptedData = Buffer.from(encryptedSecret, "hex");
+
+    const iv = encryptedData.slice(0, 16);
+    const encrypted = encryptedData.slice(16, encryptedData.length - 16);
+    const authTag = encryptedData.slice(encryptedData.length - 16);
+
+    const decipher = crypto.createDecipheriv("aes-256-gcm", this.key, iv);
+    decipher.setAuthTag(authTag);
+
+    const decrypted = Buffer.concat([
+      decipher.update(encrypted),
+      decipher.final(),
+    ]);
+
+    return decrypted.toString("utf8");
+  }
+
+  /**
    * This is used to cache the encrypted clients secrets using the provided redis connection
    * @param encryptSecret - The encrypted version of the generated secret
    * @param userID - Unique identifier for the user initating the key exchange
@@ -86,5 +109,19 @@ export class ServerSecureKeyExchange {
     const encryptedSecret = this.encryptSecret(sharedSecret);
     await this.cacheSecret(encryptedSecret, userID, ttl);
     return ecdh.getPublicKey("hex");
+  }
+
+  /**
+   * This is used to retrive the cached secret
+   * @param options - This is of type GetSecretOptions and can be used to determine how the secret should be returned
+   */
+  async getSecret(options: GetSecretOptions): Promise<string | null> {
+    const secret = await this.redisClient?.get(
+      `${options.userID}-secure-keyx-secret`
+    );
+    if (!secret) return null;
+    if (!options.decrypt) return secret;
+    const decryptedSecret = this.decryptSecret(secret);
+    return decryptedSecret;
   }
 }
