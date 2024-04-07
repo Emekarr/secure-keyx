@@ -72,7 +72,7 @@ export class ServerSecureKeyExchange {
    * @param userID - Unique identifier for the user initating the key exchange
    * @param ttl - Set the time for the generated secrets to expire and be invalid. Defaults to 5 minutes
    */
-  public async generateSecret(
+  async generateSecret(
     clientPublicKey: string,
     userID: string,
     ttl: number = 300
