@@ -10,7 +10,7 @@ export class ServerSecureKeyExchange {
    * Create a new instance of the SecureKeyExchange class.
    * @param key - This is a 32 character encryption key used to encrypt the ECDH secrets stored in redis.
    */
-  constructor(private key: string) {
+  constructor(private key: string, private cache: boolean) {
     const is32 = verifyTextLength(this.key, 32);
     if (!is32)
       throw new Error(
@@ -107,7 +107,7 @@ export class ServerSecureKeyExchange {
     const ecdh = this.generateServerKeys();
     const sharedSecret = ecdh.computeSecret(clientPublicKey, "hex", "hex");
     const encryptedSecret = this.encryptSecret(sharedSecret);
-    await this.cacheSecret(encryptedSecret, userID, ttl);
+    if (this.cache) await this.cacheSecret(encryptedSecret, userID, ttl);
     return ecdh.getPublicKey("hex");
   }
 
@@ -116,6 +116,7 @@ export class ServerSecureKeyExchange {
    * @param options - This is of type GetSecretOptions and can be used to determine how the secret should be returned
    */
   async getSecret(options: GetSecretOptions): Promise<string | null> {
+    if (!this.cache) return null;
     const secret = await this.redisClient?.get(
       `${options.userID}-secure-keyx-secret`
     );
