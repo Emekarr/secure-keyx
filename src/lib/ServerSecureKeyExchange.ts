@@ -108,7 +108,10 @@ export class ServerSecureKeyExchange {
     const sharedSecret = ecdh.computeSecret(clientPublicKey, "hex", "hex");
     const encryptedSecret = this.encryptSecret(sharedSecret);
     if (this.cache) await this.cacheSecret(encryptedSecret, userID, ttl);
-    return ecdh.getPublicKey("hex");
+    return {
+      serverPublicKey: ecdh.getPublicKey("hex"),
+      sharedSecret: this.cache ? null : encryptedSecret,
+    };
   }
 
   /**
