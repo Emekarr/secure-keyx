@@ -56,7 +56,7 @@ export class ServerSecureKeyExchange {
    * This is used to decrypt the cached encrypted secrets
    * @param encryptedSecret - The cached secret encrypted by encryptSecret
    */
-  private decryptSecret(encryptedSecret: string): string {
+  decryptSecret(encryptedSecret: string): string {
     const encryptedData = Buffer.from(encryptedSecret, "hex");
 
     const iv = encryptedData.slice(0, 16);
