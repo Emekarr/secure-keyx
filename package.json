@@ -1,6 +1,6 @@
 {
   "name": "secure-keyx",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "This is an npm package that provides a simple and secure way to perform Elliptic Curve Diffie-Hellman (ECDH) key exchange between a client and server, with the server managing the keys in a Redis database.",
   "main": "./build/index.js",
   "scripts": {
