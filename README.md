@@ -73,7 +73,8 @@ client.connect();
 
 app.post("/", async (req, res) => {
   const secureServerClient = new ServerSecureKeyExchange(
-    process.env.ENCRYPTION_KEY
+    process.env.ENCRYPTION_KEY,
+    true // set to true if you want secure-keyx to cache the shared secrets to redis automatically
   );
   secureServerClient.setRedisConnection(client);
   const serverPublicKey = await secureServerClient.generateSecret(
