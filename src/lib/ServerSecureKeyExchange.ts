@@ -40,7 +40,7 @@ export class ServerSecureKeyExchange {
    * This is used to encrypt the generated secrets using the key passed in through the constructor
    * @param secret - The generated secret
    */
-  private encryptSecret(secret: string) {
+  encryptSecret(secret: string) {
     const iv = crypto.randomBytes(16);
     const cipher = crypto.createCipheriv("aes-256-gcm", this.key, iv);
     const encrypted = Buffer.concat([
