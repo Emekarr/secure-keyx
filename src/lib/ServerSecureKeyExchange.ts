@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { RedisClientType } from "redis";
 import { verifyTextLength } from "./utils/validator";
-import { GetSecretOptions } from "./types";
+import { ConstructorInitialiser, GetSecretOptions } from "./types";
 
 export class ServerSecureKeyExchange {
   private redisClient?: RedisClientType<any>;
@@ -10,12 +10,14 @@ export class ServerSecureKeyExchange {
    * Create a new instance of the SecureKeyExchange class.
    * @param key - This is a 32 character encryption key used to encrypt the ECDH secrets stored in redis.
    */
-  constructor(private key: string, private cache: boolean) {
-    const is32 = verifyTextLength(this.key, 32);
-    if (!is32)
-      throw new Error(
-        "constructor param key must consist of only 32 characters"
-      );
+  constructor(private payload: ConstructorInitialiser) {
+    if (this.payload.key) {
+      const is32 = verifyTextLength(this.payload.key, 32);
+      if (!is32)
+        throw new Error(
+          "constructor param key must consist of only 32 characters"
+        );
+    }
   }
 
   /**
@@ -42,7 +44,7 @@ export class ServerSecureKeyExchange {
    */
   encryptSecret(secret: string) {
     const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipheriv("aes-256-gcm", this.key, iv);
+    const cipher = crypto.createCipheriv("aes-256-gcm", this.payload.key!, iv);
     const encrypted = Buffer.concat([
       cipher.update(secret, "utf8"),
       cipher.final(),
@@ -63,7 +65,11 @@ export class ServerSecureKeyExchange {
     const encrypted = encryptedData.slice(16, encryptedData.length - 16);
     const authTag = encryptedData.slice(encryptedData.length - 16);
 
-    const decipher = crypto.createDecipheriv("aes-256-gcm", this.key, iv);
+    const decipher = crypto.createDecipheriv(
+      "aes-256-gcm",
+      this.payload.key!,
+      iv
+    );
     decipher.setAuthTag(authTag);
 
     const decrypted = Buffer.concat([
@@ -106,11 +112,23 @@ export class ServerSecureKeyExchange {
       );
     const ecdh = this.generateServerKeys();
     const sharedSecret = ecdh.computeSecret(clientPublicKey, "hex", "hex");
-    const encryptedSecret = this.encryptSecret(sharedSecret);
-    if (this.cache) await this.cacheSecret(encryptedSecret, userID, ttl);
+    let encryptedSecret: string;
+    let encryptedSecretIV: string;
+    if (this.payload.key) {
+      encryptedSecret = this.encryptSecret(sharedSecret);
+    }
+    if (this.payload.cache) {
+      if (!this.payload.key)
+        throw new Error(
+          "caching can only be enabled when encryption is enabled"
+        );
+      await this.cacheSecret(encryptedSecret!, `${userID}-ecdh-key`, ttl);
+      await this.cacheSecret(encryptedSecretIV!, `${userID}-ecdh-iv`, ttl);
+    }
     return {
       serverPublicKey: ecdh.getPublicKey("hex"),
-      sharedSecret: this.cache ? null : encryptedSecret,
+      sharedSecret: this.payload.cache ? null : encryptedSecret!,
+      sharedSecretIV: this.payload.cache ? null : encryptedSecretIV!,
     };
   }
 
@@ -119,7 +137,7 @@ export class ServerSecureKeyExchange {
    * @param options - This is of type GetSecretOptions and can be used to determine how the secret should be returned
    */
   async getSecret(options: GetSecretOptions): Promise<string | null> {
-    if (!this.cache) return null;
+    if (!this.payload.cache) return null;
     const secret = await this.redisClient?.get(
       `${options.userID}-secure-keyx-secret`
     );
