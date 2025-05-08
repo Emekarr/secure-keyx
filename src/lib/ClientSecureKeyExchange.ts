@@ -21,7 +21,13 @@ export class ClientSecureKeyExchange {
    * Get the generate a client public key for the key exchange
    */
   async getPublicKey() {
-    await this.generateClientKeys();
+    // Check if the cryptoKeyPair is already generated
+    if (!this.cryptoKeyPair) {
+      await this.generateClientKeys();
+    }
+
+    if (!this.cryptoKeyPair) throw new Error("Failed to generate client keys");
+
     const publicKey = await window.crypto.subtle.exportKey(
       "raw",
       this.cryptoKeyPair!.publicKey
@@ -49,6 +55,7 @@ export class ClientSecureKeyExchange {
       true,
       []
     );
+
     const sharedSecret = await window.crypto.subtle.deriveBits(
       {
         name: "ECDH",
